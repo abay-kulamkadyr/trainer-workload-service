@@ -14,3 +14,11 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
+
+security:
+  jwt:
+    secret: 6cphIzZx0mXxVauGgSNM2WvPmy_2EDu7Bl70ZHJppH4
+    lifetime: 30m
+
+  cors:
+    allowed-origins: http://localhost:8080
