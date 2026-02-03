@@ -2,10 +2,16 @@ server:
   port: 8081
 
 spring:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
   application:
     name: trainer-workload-service
   datasource:
-    url: jdbc:h2:mem:workload-db
+    url: jdbc:h2:mem:workload_db;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
     driverClassName: org.h2.Driver
 
 eureka:
@@ -22,3 +28,8 @@ security:
 
   cors:
     allowed-origins: http://localhost:8080
+
+# Console log pattern (colored + Tracing ID)
+logging:
+  pattern:
+    console: '%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%15.15t]){faint} %clr([TxnId: %X{transactionId:-NO_TXN}]){cyan} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}'
