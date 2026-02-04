@@ -59,6 +59,7 @@ public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TrainerSummaryResponse getTrainerSummary(String username) {
         List<TrainerWorkload> workloads = repository.getTrainerWorkloads(username);
         if (workloads == null || workloads.isEmpty()) {

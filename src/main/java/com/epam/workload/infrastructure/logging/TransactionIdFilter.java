@@ -7,7 +7,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -15,7 +14,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-@Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class TransactionIdFilter extends OncePerRequestFilter {
@@ -39,11 +37,7 @@ public class TransactionIdFilter extends OncePerRequestFilter {
         response.setHeader(MdcConstants.TRANSACTION_ID_HEADER, transactionId);
 
         try {
-            log.info("[{}] Incoming request: {} {}", transactionId, request.getMethod(), request.getRequestURI());
-
             filterChain.doFilter(request, response);
-
-            log.info("[{}] Response status: {}", transactionId, response.getStatus());
         }
         finally {
             // Clean up MDC

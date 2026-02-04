@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/workload")
-public class TrainerWorkloadController implements TrainerWorkloadControllerApi {
+class TrainerWorkloadController implements TrainerWorkloadControllerApi {
     private final TrainerWorkloadService workloadService;
     private final WorkloadRequestMapper mapper;
 

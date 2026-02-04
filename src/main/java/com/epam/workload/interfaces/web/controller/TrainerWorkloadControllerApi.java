@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Trainer Workload", description = "Trainer workload management API")
-public interface TrainerWorkloadControllerApi {
+interface TrainerWorkloadControllerApi {
     @Operation(summary = "Update trainer workload", description = "Add or delete training hours for a trainer")
     @ApiResponses(
             value = { @ApiResponse(responseCode = "200", description = "Workload updated successfully"),
