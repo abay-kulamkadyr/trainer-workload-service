@@ -23,7 +23,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TrainerWorkloadDAO {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

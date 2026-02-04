@@ -15,14 +15,21 @@ import lombok.With;
 public class TrainerWorkload {
     @EqualsAndHashCode.Include
     Long id;
+
     @EqualsAndHashCode.Include
     String username;
+
     String firstName;
+
     String lastName;
+
     Boolean active;
+
     @EqualsAndHashCode.Include
     Year year;
+
     @EqualsAndHashCode.Include
     Month month;
+
     Integer trainingDurationMinutes;
 }

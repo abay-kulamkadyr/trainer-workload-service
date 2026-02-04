@@ -1,14 +1,17 @@
 package com.epam.workload.interfaces.web.controller;
 
+import com.epam.workload.application.dto.request.UpdateTrainerWorkloadCommand;
 import com.epam.workload.application.service.TrainerWorkloadService;
-import com.epam.workload.application.service.request.UpdateTrainerWorkloadCommand;
 import com.epam.workload.domain.model.TrainerWorkload;
 import com.epam.workload.interfaces.web.dto.request.TrainerWorkloadWebRequest;
+import com.epam.workload.interfaces.web.dto.response.TrainerSummaryResponse;
 import com.epam.workload.interfaces.web.dto.response.TrainerWorkloadResponse;
 import com.epam.workload.interfaces.web.mapper.WorkloadRequestMapper;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,9 +33,15 @@ public class TrainerWorkloadController implements TrainerWorkloadControllerApi {
     @PostMapping
     public ResponseEntity<TrainerWorkloadResponse> processTrainerRequest(
             @Valid @RequestBody TrainerWorkloadWebRequest request) {
-        UpdateTrainerWorkloadCommand serviceRequest = mapper.toServiceRequest(request);
+        UpdateTrainerWorkloadCommand serviceRequest = mapper.toUpdateWorkloadCommand(request);
         TrainerWorkload workloadResponse = workloadService.processRequest(serviceRequest);
         return ResponseEntity.ok(toResponse(workloadResponse));
+    }
+
+    @Override
+    @GetMapping("/{username}")
+    public ResponseEntity<TrainerSummaryResponse> getTrainerSummary(@PathVariable String username) {
+        return ResponseEntity.ok(mapper.toTrainerSummaryResponse(workloadService.getTrainerSummary(username)));
     }
 
     private TrainerWorkloadResponse toResponse(TrainerWorkload workload) {

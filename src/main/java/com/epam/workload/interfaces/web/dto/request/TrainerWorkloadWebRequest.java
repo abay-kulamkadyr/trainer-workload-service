@@ -2,7 +2,7 @@ package com.epam.workload.interfaces.web.dto.request;
 
 import java.time.LocalDateTime;
 
-import com.epam.workload.application.service.ActionType;
+import com.epam.workload.application.dto.request.ActionType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

@@ -2,6 +2,7 @@ package com.epam.workload.infrastructure.persistence.repository;
 
 import java.time.Month;
 import java.time.Year;
+import java.util.List;
 import java.util.Optional;
 
 import com.epam.workload.domain.model.TrainerWorkload;
@@ -26,6 +27,11 @@ public class TrainerWorkloadRepositoryImpl implements TrainerWorkloadRepository 
         return jpaRepository
                 .findByUsernameAndYearAndMonth(username, year.getValue(), month.getValue())
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public List<TrainerWorkload> getTrainerWorkloads(String username) {
+        return jpaRepository.findByUsername(username).stream().map(mapper::toDomain).toList();
     }
 
     @Override
