@@ -12,8 +12,7 @@ import org.springframework.stereotype.Component;
 public class TrainerWorkloadMapper {
 
     public TrainerWorkload toDomain(@NonNull TrainerWorkloadDAO entity) {
-        return TrainerWorkload
-                .builder()
+        return TrainerWorkload.builder()
                 .id(entity.getId())
                 .username(entity.getUsername())
                 .firstName(entity.getFirstName())
@@ -26,8 +25,7 @@ public class TrainerWorkloadMapper {
     }
 
     public TrainerWorkloadDAO toEntity(@NonNull TrainerWorkload domain) {
-        return TrainerWorkloadDAO
-                .builder()
+        return TrainerWorkloadDAO.builder()
                 .id(domain.getId())
                 .username(domain.getUsername())
                 .firstName(domain.getFirstName())

@@ -1,3 +1,5 @@
 package com.epam.workload.application.dto.response;
 
-public record MonthSummaryDTO(String month, long trainingSummaryDuration) {}
+import java.time.Month;
+
+public record MonthSummaryDTO(Month month, long trainingSummaryDuration) {}

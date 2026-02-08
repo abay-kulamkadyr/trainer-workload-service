@@ -13,14 +13,18 @@ import org.springframework.http.ResponseEntity;
 interface TrainerWorkloadControllerApi {
     @Operation(summary = "Update trainer workload", description = "Add or delete training hours for a trainer")
     @ApiResponses(
-            value = { @ApiResponse(responseCode = "200", description = "Workload updated successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid request"),
-                    @ApiResponse(responseCode = "422", description = "Insufficient duration for DELETE") })
+            value = {
+                @ApiResponse(responseCode = "200", description = "Workload updated successfully"),
+                @ApiResponse(responseCode = "400", description = "Invalid request"),
+                @ApiResponse(responseCode = "422", description = "Insufficient duration for DELETE")
+            })
     ResponseEntity<TrainerWorkloadResponse> processTrainerRequest(TrainerWorkloadWebRequest request);
 
     @Operation(summary = "Get trainer workload summary")
     @ApiResponses(
-            value = { @ApiResponse(responseCode = "200", description = "Workload is retrieved successfully"),
-                    @ApiResponse(responseCode = "404", description = "Trainer is not found") })
+            value = {
+                @ApiResponse(responseCode = "200", description = "Workload is retrieved successfully"),
+                @ApiResponse(responseCode = "404", description = "Trainer is not found")
+            })
     ResponseEntity<TrainerSummaryResponse> getTrainerSummary(String username);
 }

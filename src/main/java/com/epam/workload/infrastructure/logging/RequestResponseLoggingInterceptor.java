@@ -17,20 +17,17 @@ public class RequestResponseLoggingInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull Object handler) {
+            @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
 
         String transactionId = MDC.get(MdcConstants.TRANSACTION_ID_MDC_KEY);
 
-        log
-                .info(
-                    "=== Incoming Request === TransactionId: {} | Method: {} | URI: {} | Query: {} | RemoteAddr: {}",
-                    transactionId,
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    request.getQueryString() != null ? request.getQueryString() : "N/A",
-                    request.getRemoteAddr());
+        log.info(
+                "=== Incoming Request === TransactionId: {} | Method: {} | URI: {} | Query: {} | RemoteAddr: {}",
+                transactionId,
+                request.getMethod(),
+                request.getRequestURI(),
+                request.getQueryString() != null ? request.getQueryString() : "N/A",
+                request.getRemoteAddr());
 
         logHeaders(request);
 
@@ -48,35 +45,30 @@ public class RequestResponseLoggingInterceptor implements HandlerInterceptor {
 
         // Log response details
         if (ex != null) {
-            log
-                    .error(
-                        "=== Request Failed === TransactionId: {} | Method: {} | URI: {} | Status: {} | Exception: {}",
-                        transactionId,
-                        request.getMethod(),
-                        request.getRequestURI(),
-                        response.getStatus(),
-                        ex.getMessage());
-        }
-        else {
+            log.error(
+                    "=== Request Failed === TransactionId: {} | Method: {} | URI: {} | Status: {} | Exception: {}",
+                    transactionId,
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    response.getStatus(),
+                    ex.getMessage());
+        } else {
             String logLevel = response.getStatus() >= 400 ? "ERROR" : "INFO";
 
             if ("ERROR".equals(logLevel)) {
-                log
-                        .error(
-                            "=== Request Completed with Error === TransactionId: {} | Method: {} | URI: {} | Status: {}",
-                            transactionId,
-                            request.getMethod(),
-                            request.getRequestURI(),
-                            response.getStatus());
-            }
-            else {
-                log
-                        .info(
-                            "=== Request Completed === TransactionId: {} | Method: {} | URI: {} | Status: {}",
-                            transactionId,
-                            request.getMethod(),
-                            request.getRequestURI(),
-                            response.getStatus());
+                log.error(
+                        "=== Request Completed with Error === TransactionId: {} | Method: {} | URI: {} | Status: {}",
+                        transactionId,
+                        request.getMethod(),
+                        request.getRequestURI(),
+                        response.getStatus());
+            } else {
+                log.info(
+                        "=== Request Completed === TransactionId: {} | Method: {} | URI: {} | Status: {}",
+                        transactionId,
+                        request.getMethod(),
+                        request.getRequestURI(),
+                        response.getStatus());
             }
         }
     }
@@ -93,5 +85,4 @@ public class RequestResponseLoggingInterceptor implements HandlerInterceptor {
 
         log.debug("Request Headers: {}", headers.toString().trim());
     }
-
 }

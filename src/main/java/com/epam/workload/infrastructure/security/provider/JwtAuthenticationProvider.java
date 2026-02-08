@@ -33,8 +33,7 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
             TokenData tokenData = tokenValidationService.validateToken(token);
             log.debug("Token successfully validated for user: {}", tokenData.username());
             return new UsernamePasswordAuthenticationToken(tokenData.username(), null, Collections.emptyList());
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             log.warn("Token parsing failed: {}", e.getMessage());
             throw new BadCredentialsException("Invalid token", e);
         }
@@ -44,5 +43,4 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
     public boolean supports(Class<?> authentication) {
         return JwtAuthenticationToken.class.isAssignableFrom(authentication);
     }
-
 }

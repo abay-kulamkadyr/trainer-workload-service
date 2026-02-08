@@ -60,24 +60,13 @@ class TrainerWorkloadControllerTest {
         @DisplayName("Should process ADD request successfully")
         void shouldProcessAddRequestSuccessfully() throws Exception {
             // Given
-            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
-                    120,
-                    ActionType.ADD);
+            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 120, ActionType.ADD);
 
-            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
-                    120,
-                    ActionType.ADD);
+            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 120, ActionType.ADD);
 
-            TrainerWorkload workload = TrainerWorkload
-                    .builder()
+            TrainerWorkload workload = TrainerWorkload.builder()
                     .username("john.smith")
                     .year(Year.of(2025))
                     .month(Month.JANUARY)
@@ -88,12 +77,10 @@ class TrainerWorkloadControllerTest {
             when(workloadService.processRequest(command)).thenReturn(workload);
 
             // When & Then
-            mockMvc
-                    .perform(
-                        post("/api/workload")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/workload")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.username").value("john.smith"))
                     .andExpect(jsonPath("$.year").value("2025"))
@@ -106,7 +93,8 @@ class TrainerWorkloadControllerTest {
         @DisplayName("Should return 400 when username is blank")
         void shouldReturn400WhenUsernameIsBlank() throws Exception {
             // Given
-            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest("", // Blank username
+            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest(
+                    "", // Blank username
                     "John",
                     "Smith",
                     true,
@@ -115,12 +103,10 @@ class TrainerWorkloadControllerTest {
                     ActionType.ADD);
 
             // When & Then
-            mockMvc
-                    .perform(
-                        post("/api/workload")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/workload")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.trainerUsername").value("Trainer username is required"));
         }
@@ -130,7 +116,8 @@ class TrainerWorkloadControllerTest {
         @DisplayName("Should return 400 when duration is less than 1")
         void shouldReturn400WhenDurationIsLessThan1() throws Exception {
             // Given
-            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest("john.smith",
+            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest(
+                    "john.smith",
                     "John",
                     "Smith",
                     true,
@@ -139,14 +126,13 @@ class TrainerWorkloadControllerTest {
                     ActionType.ADD);
 
             // When & Then
-            mockMvc
-                    .perform(
-                        post("/api/workload")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/workload")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.trainingDurationMin").value("Training duration must be at least 1 minute"));
+                    .andExpect(
+                            jsonPath("$.trainingDurationMinutes").value("Training duration must be at least 1 minute"));
         }
 
         @Test
@@ -154,7 +140,8 @@ class TrainerWorkloadControllerTest {
         @DisplayName("Should return 400 when required fields are null")
         void shouldReturn400WhenRequiredFieldsAreNull() throws Exception {
             // Given
-            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest("john.smith",
+            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest(
+                    "john.smith",
                     "John",
                     "Smith",
                     null, // Null active status
@@ -163,12 +150,10 @@ class TrainerWorkloadControllerTest {
                     ActionType.ADD);
 
             // When & Then
-            mockMvc
-                    .perform(
-                        post("/api/workload")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/workload")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
         }
 
@@ -177,33 +162,21 @@ class TrainerWorkloadControllerTest {
         @DisplayName("Should return 422 when insufficient duration for DELETE")
         void shouldReturn422WhenInsufficientDurationForDelete() throws Exception {
             // Given
-            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
-                    120,
-                    ActionType.DELETE);
+            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 120, ActionType.DELETE);
 
-            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
-                    120,
-                    ActionType.DELETE);
+            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 120, ActionType.DELETE);
 
             when(mapper.toUpdateWorkloadCommand(any())).thenReturn(command);
             when(workloadService.processRequest(command))
                     .thenThrow(new InsufficientDurationException("Cannot delete 120 minutes"));
 
             // When & Then
-            mockMvc
-                    .perform(
-                        post("/api/workload")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/workload")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnprocessableEntity())
                     .andExpect(jsonPath("$.error").value("INSUFFICIENT_DURATION"))
                     .andExpect(jsonPath("$.message").value(containsString("Cannot delete 120 minutes")));
@@ -213,21 +186,14 @@ class TrainerWorkloadControllerTest {
         @DisplayName("Should return 401 when not authenticated")
         void shouldReturn401WhenNotAuthenticated() throws Exception {
             // Given
-            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
-                    120,
-                    ActionType.ADD);
+            TrainerWorkloadWebRequest request = new TrainerWorkloadWebRequest(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 120, ActionType.ADD);
 
             // When & Then
-            mockMvc
-                    .perform(
-                        post("/api/workload")
-                                .with(csrf())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/workload")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized());
         }
     }
@@ -243,41 +209,36 @@ class TrainerWorkloadControllerTest {
             // Given
             String username = "john.smith";
 
-            TrainerSummaryResponse serviceResponse = new TrainerSummaryResponse(username,
+            TrainerSummaryResponse serviceResponse = new TrainerSummaryResponse(
+                    username,
                     "John",
                     "Smith",
                     true,
-                    List
-                            .of(
-                                new YearSummaryDTO(2025,
-                                        List
-                                                .of(
-                                                    new MonthSummaryDTO("JANUARY", 120),
-                                                    new MonthSummaryDTO("FEBRUARY", 90)))));
+                    List.of(new YearSummaryDTO(
+                            Year.of(2025),
+                            List.of(
+                                    new MonthSummaryDTO(Month.JANUARY, 120),
+                                    new MonthSummaryDTO(Month.FEBRUARY, 90)))));
 
             com.epam.workload.interfaces.web.dto.response.TrainerSummaryResponse webResponse =
-                    new com.epam.workload.interfaces.web.dto.response.TrainerSummaryResponse(username,
+                    new com.epam.workload.interfaces.web.dto.response.TrainerSummaryResponse(
+                            username,
                             "John",
                             "Smith",
                             true,
-                            List
-                                    .of(
-                                        new com.epam.workload.interfaces.web.dto.response.YearSummaryDTO(2025,
-                                                List
-                                                        .of(
-                                                            new com.epam.workload.interfaces.web.dto.response.MonthSummaryDTO(
-                                                                    "JANUARY",
-                                                                    120),
-                                                            new com.epam.workload.interfaces.web.dto.response.MonthSummaryDTO(
-                                                                    "FEBRUARY",
-                                                                    90)))));
+                            List.of(new com.epam.workload.interfaces.web.dto.response.YearSummaryDTO(
+                                    Year.of(2025),
+                                    List.of(
+                                            new com.epam.workload.interfaces.web.dto.response.MonthSummaryDTO(
+                                                    Month.JANUARY, 120),
+                                            new com.epam.workload.interfaces.web.dto.response.MonthSummaryDTO(
+                                                    Month.FEBRUARY, 90)))));
 
             when(workloadService.getTrainerSummary(username)).thenReturn(serviceResponse);
             when(mapper.toTrainerSummaryResponse(serviceResponse)).thenReturn(webResponse);
 
             // When & Then
-            mockMvc
-                    .perform(get("/api/workload/{username}", username))
+            mockMvc.perform(get("/api/workload/{username}", username))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.username").value(username))
                     .andExpect(jsonPath("$.firstName").value("John"))
@@ -287,9 +248,11 @@ class TrainerWorkloadControllerTest {
                     .andExpect(jsonPath("$.years[0].year").value(2025))
                     .andExpect(jsonPath("$.years[0].months").isArray())
                     .andExpect(jsonPath("$.years[0].months[0].month").value("JANUARY"))
-                    .andExpect(jsonPath("$.years[0].months[0].trainingSummaryDuration").value(120))
+                    .andExpect(jsonPath("$.years[0].months[0].trainingSummaryDuration")
+                            .value(120))
                     .andExpect(jsonPath("$.years[0].months[1].month").value("FEBRUARY"))
-                    .andExpect(jsonPath("$.years[0].months[1].trainingSummaryDuration").value(90));
+                    .andExpect(jsonPath("$.years[0].months[1].trainingSummaryDuration")
+                            .value(90));
         }
 
         @Test
@@ -303,8 +266,7 @@ class TrainerWorkloadControllerTest {
                     .thenThrow(new EntityNotFoundException("No workload found"));
 
             // When & Then
-            mockMvc
-                    .perform(get("/api/workload/{username}", username))
+            mockMvc.perform(get("/api/workload/{username}", username))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error").value("Resource Not Found"));
         }

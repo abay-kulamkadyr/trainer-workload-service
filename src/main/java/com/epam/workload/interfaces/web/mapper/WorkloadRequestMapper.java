@@ -12,5 +12,4 @@ public interface WorkloadRequestMapper {
 
     com.epam.workload.interfaces.web.dto.response.TrainerSummaryResponse toTrainerSummaryResponse(
             TrainerSummaryResponse serviceResponse);
-
 }

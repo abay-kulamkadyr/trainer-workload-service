@@ -9,5 +9,4 @@ public final class MdcConstants {
     private MdcConstants() {
         throw new AssertionError("Cannot instantiate constants class");
     }
-
 }

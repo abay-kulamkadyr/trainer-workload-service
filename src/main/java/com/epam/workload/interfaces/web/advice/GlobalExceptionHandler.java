@@ -37,9 +37,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InsufficientDurationException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientDuration(
-            InsufficientDurationException ex,
-            HttpServletRequest request) {
-        ErrorResponse error = new ErrorResponse("INSUFFICIENT_DURATION",
+            InsufficientDurationException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                "INSUFFICIENT_DURATION",
                 ex.getMessage(),
                 request.getRequestURI(),
                 Instant.now(),
@@ -50,10 +50,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFoundException(
-            EntityNotFoundException ex,
-            HttpServletRequest request) {
+            EntityNotFoundException ex, HttpServletRequest request) {
 
-        ErrorResponse errorResponse = new ErrorResponse("Resource Not Found",
+        ErrorResponse errorResponse = new ErrorResponse(
+                "Resource Not Found",
                 ex.getMessage(),
                 request.getRequestURI(),
                 Instant.now(),

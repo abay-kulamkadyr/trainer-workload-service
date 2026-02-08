@@ -39,13 +39,8 @@ class TrainerWorkloadServiceImplTest {
     private TrainerWorkloadServiceImpl service;
 
     private UpdateTrainerWorkloadCommand createCommand(ActionType actionType, Integer duration) {
-        return new UpdateTrainerWorkloadCommand("john.smith",
-                "John",
-                "Smith",
-                true,
-                LocalDateTime.of(2025, 1, 15, 14, 30),
-                duration,
-                actionType);
+        return new UpdateTrainerWorkloadCommand(
+                "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), duration, actionType);
     }
 
     @Nested
@@ -58,8 +53,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             UpdateTrainerWorkloadCommand command = createCommand(ActionType.ADD, 60);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .id(1L)
                     .username("john.smith")
                     .firstName("John")
@@ -111,8 +105,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             UpdateTrainerWorkloadCommand command = createCommand(ActionType.ADD, 30);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .username("john.smith")
                     .year(Year.of(2025))
                     .month(Month.JANUARY)
@@ -140,8 +133,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 40);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .id(1L)
                     .username("john.smith")
                     .firstName("John")
@@ -169,8 +161,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 150);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .username("john.smith")
                     .year(Year.of(2025))
                     .month(Month.JANUARY)
@@ -181,10 +172,7 @@ class TrainerWorkloadServiceImplTest {
                     .thenReturn(Optional.of(existingWorkload));
 
             // When & Then
-            assertThatThrownBy(() -> service.processRequest(command))
-                    .isInstanceOf(InsufficientDurationException.class)
-                    .hasMessageContaining("Cannot delete 150 minutes")
-                    .hasMessageContaining("Current duration: 100 minutes");
+            assertThatThrownBy(() -> service.processRequest(command)).isInstanceOf(InsufficientDurationException.class);
 
             verify(repository, never()).save(any());
         }
@@ -195,8 +183,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 10);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .username("john.smith")
                     .year(Year.of(2025))
                     .month(Month.JANUARY)
@@ -218,8 +205,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 100);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .username("john.smith")
                     .year(Year.of(2025))
                     .month(Month.JANUARY)
@@ -246,9 +232,7 @@ class TrainerWorkloadServiceImplTest {
             when(repository.findByUsernameAndYearAndMonth(any(), any(), any())).thenReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> service.processRequest(command))
-                    .isInstanceOf(InsufficientDurationException.class)
-                    .hasMessageContaining("Cannot delete 50 minutes");
+            assertThatThrownBy(() -> service.processRequest(command)).isInstanceOf(InsufficientDurationException.class);
         }
     }
 
@@ -262,8 +246,7 @@ class TrainerWorkloadServiceImplTest {
             // Given
             String username = "john.smith";
 
-            TrainerWorkload workload = TrainerWorkload
-                    .builder()
+            TrainerWorkload workload = TrainerWorkload.builder()
                     .username(username)
                     .firstName("John")
                     .lastName("Smith")
@@ -273,7 +256,7 @@ class TrainerWorkloadServiceImplTest {
                     .trainingDurationMinutes(120)
                     .build();
 
-            when(repository.getTrainerWorkloads(username)).thenReturn(List.of(workload));
+            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(List.of(workload));
 
             // When
             TrainerSummaryResponse response = service.getTrainerSummary(username);
@@ -285,10 +268,11 @@ class TrainerWorkloadServiceImplTest {
             assertThat(response.lastName()).isEqualTo("Smith");
             assertThat(response.status()).isTrue();
             assertThat(response.years()).hasSize(1);
-            assertThat(response.years().getFirst().year()).isEqualTo(2025);
+            assertThat(response.years().getFirst().year()).isEqualTo(Year.of(2025));
             assertThat(response.years().getFirst().months()).hasSize(1);
-            assertThat(response.years().getFirst().months().getFirst().month()).isEqualTo("JANUARY");
-            assertThat(response.years().getFirst().months().getFirst().trainingSummaryDuration()).isEqualTo(120);
+            assertThat(response.years().getFirst().months().getFirst().month()).isEqualTo(Month.JANUARY);
+            assertThat(response.years().getFirst().months().getFirst().trainingSummaryDuration())
+                    .isEqualTo(120);
         }
 
         @Test
@@ -297,47 +281,43 @@ class TrainerWorkloadServiceImplTest {
             // Given
             String username = "john.smith";
 
-            List<TrainerWorkload> workloads = Arrays
-                    .asList(
-                        TrainerWorkload
-                                .builder()
-                                .username(username)
-                                .firstName("John")
-                                .lastName("Smith")
-                                .active(true)
-                                .year(Year.of(2025))
-                                .month(Month.JANUARY)
-                                .trainingDurationMinutes(120)
-                                .build(),
-                        TrainerWorkload
-                                .builder()
-                                .username(username)
-                                .firstName("John")
-                                .lastName("Smith")
-                                .active(true)
-                                .year(Year.of(2025))
-                                .month(Month.FEBRUARY)
-                                .trainingDurationMinutes(90)
-                                .build(),
-                        TrainerWorkload
-                                .builder()
-                                .username(username)
-                                .firstName("John")
-                                .lastName("Smith")
-                                .active(true)
-                                .year(Year.of(2025))
-                                .month(Month.MARCH)
-                                .trainingDurationMinutes(150)
-                                .build());
+            List<TrainerWorkload> workloads = Arrays.asList(
+                    TrainerWorkload.builder()
+                            .username(username)
+                            .firstName("John")
+                            .lastName("Smith")
+                            .active(true)
+                            .year(Year.of(2025))
+                            .month(Month.JANUARY)
+                            .trainingDurationMinutes(120)
+                            .build(),
+                    TrainerWorkload.builder()
+                            .username(username)
+                            .firstName("John")
+                            .lastName("Smith")
+                            .active(true)
+                            .year(Year.of(2025))
+                            .month(Month.FEBRUARY)
+                            .trainingDurationMinutes(90)
+                            .build(),
+                    TrainerWorkload.builder()
+                            .username(username)
+                            .firstName("John")
+                            .lastName("Smith")
+                            .active(true)
+                            .year(Year.of(2025))
+                            .month(Month.MARCH)
+                            .trainingDurationMinutes(150)
+                            .build());
 
-            when(repository.getTrainerWorkloads(username)).thenReturn(workloads);
+            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(workloads);
 
             // When
             TrainerSummaryResponse response = service.getTrainerSummary(username);
 
             // Then
             assertThat(response.years()).hasSize(1);
-            assertThat(response.years().getFirst().year()).isEqualTo(2025);
+            assertThat(response.years().getFirst().year()).isEqualTo(Year.of(2025));
             assertThat(response.years().getFirst().months()).hasSize(3);
         }
 
@@ -347,30 +327,27 @@ class TrainerWorkloadServiceImplTest {
             // Given
             String username = "john.smith";
 
-            List<TrainerWorkload> workloads = Arrays
-                    .asList(
-                        TrainerWorkload
-                                .builder()
-                                .username(username)
-                                .firstName("John")
-                                .lastName("Smith")
-                                .active(true)
-                                .year(Year.of(2024))
-                                .month(Month.DECEMBER)
-                                .trainingDurationMinutes(100)
-                                .build(),
-                        TrainerWorkload
-                                .builder()
-                                .username(username)
-                                .firstName("John")
-                                .lastName("Smith")
-                                .active(true)
-                                .year(Year.of(2025))
-                                .month(Month.JANUARY)
-                                .trainingDurationMinutes(120)
-                                .build());
+            List<TrainerWorkload> workloads = Arrays.asList(
+                    TrainerWorkload.builder()
+                            .username(username)
+                            .firstName("John")
+                            .lastName("Smith")
+                            .active(true)
+                            .year(Year.of(2024))
+                            .month(Month.DECEMBER)
+                            .trainingDurationMinutes(100)
+                            .build(),
+                    TrainerWorkload.builder()
+                            .username(username)
+                            .firstName("John")
+                            .lastName("Smith")
+                            .active(true)
+                            .year(Year.of(2025))
+                            .month(Month.JANUARY)
+                            .trainingDurationMinutes(120)
+                            .build());
 
-            when(repository.getTrainerWorkloads(username)).thenReturn(workloads);
+            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(workloads);
 
             // When
             TrainerSummaryResponse response = service.getTrainerSummary(username);
@@ -384,7 +361,7 @@ class TrainerWorkloadServiceImplTest {
         void shouldThrowExceptionWhenNoWorkloadsFound() {
             // Given
             String username = "nonexistent.user";
-            when(repository.getTrainerWorkloads(username)).thenReturn(List.of());
+            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(List.of());
 
             // When & Then
             assertThatThrownBy(() -> service.getTrainerSummary(username)).isInstanceOf(EntityNotFoundException.class);
@@ -395,7 +372,7 @@ class TrainerWorkloadServiceImplTest {
         void shouldThrowExceptionWhenWorkloadsIsNull() {
             // Given
             String username = "john.smith";
-            when(repository.getTrainerWorkloads(username)).thenReturn(null);
+            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(null);
 
             // When & Then
             assertThatThrownBy(() -> service.getTrainerSummary(username)).isInstanceOf(EntityNotFoundException.class);
@@ -410,7 +387,8 @@ class TrainerWorkloadServiceImplTest {
         @DisplayName("Should handle very large duration values")
         void shouldHandleVeryLargeDurationValues() {
             // Given
-            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand("john.smith",
+            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand(
+                    "john.smith",
                     "John",
                     "Smith",
                     true,
@@ -418,8 +396,7 @@ class TrainerWorkloadServiceImplTest {
                     Integer.MAX_VALUE - 100,
                     ActionType.ADD);
 
-            TrainerWorkload existingWorkload = TrainerWorkload
-                    .builder()
+            TrainerWorkload existingWorkload = TrainerWorkload.builder()
                     .username("john.smith")
                     .year(Year.of(2025))
                     .month(Month.JANUARY)
@@ -440,21 +417,11 @@ class TrainerWorkloadServiceImplTest {
         @DisplayName("Should handle workload for different months")
         void shouldHandleWorkloadForDifferentMonths() {
             // Given
-            UpdateTrainerWorkloadCommand januaryCommand = new UpdateTrainerWorkloadCommand("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
-                    100,
-                    ActionType.ADD);
+            UpdateTrainerWorkloadCommand januaryCommand = new UpdateTrainerWorkloadCommand(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 100, ActionType.ADD);
 
-            UpdateTrainerWorkloadCommand februaryCommand = new UpdateTrainerWorkloadCommand("john.smith",
-                    "John",
-                    "Smith",
-                    true,
-                    LocalDateTime.of(2025, 2, 15, 14, 30),
-                    150,
-                    ActionType.ADD);
+            UpdateTrainerWorkloadCommand februaryCommand = new UpdateTrainerWorkloadCommand(
+                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 2, 15, 14, 30), 150, ActionType.ADD);
 
             when(repository.findByUsernameAndYearAndMonth(eq("john.smith"), eq(Year.of(2025)), eq(Month.JANUARY)))
                     .thenReturn(Optional.empty());

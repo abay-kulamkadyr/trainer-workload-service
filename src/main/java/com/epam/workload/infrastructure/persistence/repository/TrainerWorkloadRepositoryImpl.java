@@ -30,8 +30,10 @@ public class TrainerWorkloadRepositoryImpl implements TrainerWorkloadRepository 
     }
 
     @Override
-    public List<TrainerWorkload> getTrainerWorkloads(String username) {
-        return jpaRepository.findByUsername(username).stream().map(mapper::toDomain).toList();
+    public List<TrainerWorkload> getTrainerWorkloadsOrderedByYearAndMonth(String username) {
+        return jpaRepository.findByUsernameOrderedByYearAndMonth(username).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override

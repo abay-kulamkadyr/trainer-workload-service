@@ -22,7 +22,8 @@ public class TransactionIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
 
         // Get transaction ID from header or generate new one
         String transactionId = request.getHeader(MdcConstants.TRANSACTION_ID_HEADER);
@@ -38,8 +39,7 @@ public class TransactionIdFilter extends OncePerRequestFilter {
 
         try {
             filterChain.doFilter(request, response);
-        }
-        finally {
+        } finally {
             // Clean up MDC
             MDC.remove(MdcConstants.TRANSACTION_ID_MDC_KEY);
         }

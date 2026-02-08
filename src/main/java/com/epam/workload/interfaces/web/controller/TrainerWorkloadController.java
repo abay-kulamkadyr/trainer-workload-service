@@ -45,10 +45,10 @@ class TrainerWorkloadController implements TrainerWorkloadControllerApi {
     }
 
     private TrainerWorkloadResponse toResponse(TrainerWorkload workload) {
-        return new TrainerWorkloadResponse(workload.getUsername(),
+        return new TrainerWorkloadResponse(
+                workload.getUsername(),
                 workload.getYear().toString(),
-                workload.getMonth().toString(),
+                workload.getMonth(),
                 workload.getTrainingDurationMinutes());
     }
-
 }

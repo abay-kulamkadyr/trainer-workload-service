@@ -34,11 +34,11 @@ public class JwtTokenValidationAdapter implements TokenValidationService {
     public TokenData parseToken(String token) throws IllegalArgumentException {
         try {
             Claims claims = parseClaims(token);
-            return new TokenData(claims.getSubject(),
+            return new TokenData(
+                    claims.getSubject(),
                     claims.getIssuedAt().toInstant(),
                     claims.getExpiration().toInstant());
-        }
-        catch (JwtException | IllegalArgumentException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.error("Failed to parse token: {}", e.getMessage());
             throw new IllegalArgumentException("Invalid token", e);
         }
@@ -57,16 +57,14 @@ public class JwtTokenValidationAdapter implements TokenValidationService {
 
             log.trace("Token validation successful");
             return tokenData;
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             log.debug("Token validation failed: {}", e.getMessage());
             throw e;
         }
     }
 
     private Claims parseClaims(String token) throws JwtException, IllegalArgumentException {
-        return Jwts
-                .parser()
+        return Jwts.parser()
                 .verifyWith(signingKey)
                 .clock(() -> Date.from(clock.instant()))
                 .build()

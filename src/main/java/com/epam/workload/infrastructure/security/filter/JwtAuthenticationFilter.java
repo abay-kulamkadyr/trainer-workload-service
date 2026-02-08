@@ -35,7 +35,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
         // 1. Decide if this filter needs to handle authentication
         String requestUri = request.getRequestURI();
         String token = extractToken(request);
@@ -58,8 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.setContext(context);
 
             log.debug("Successfully authenticated request to: {} for user: {}", requestUri, authResult.getName());
-        }
-        catch (AuthenticationException e) {
+        } catch (AuthenticationException e) {
             log.debug("Authentication failed for {}: {}", requestUri, e.getMessage());
             SecurityContextHolder.clearContext();
             throw e; // Let the exception propagate to be handled in
@@ -79,5 +79,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         return authHeader.substring(BEARER_PREFIX_LENGTH);
     }
-
 }

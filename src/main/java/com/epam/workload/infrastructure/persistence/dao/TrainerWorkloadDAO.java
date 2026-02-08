@@ -16,7 +16,7 @@ import lombok.Setter;
 @Entity
 @Table(
         name = "trainer_workload",
-        uniqueConstraints = { @UniqueConstraint(columnNames = { "username", "training_year", "training_month" }) })
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"username", "training_year", "training_month"})})
 @Getter
 @Setter
 @NoArgsConstructor

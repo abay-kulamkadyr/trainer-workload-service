@@ -10,7 +10,7 @@ import com.epam.workload.domain.model.TrainerWorkload;
 public interface TrainerWorkloadRepository {
     Optional<TrainerWorkload> findByUsernameAndYearAndMonth(String username, Year year, Month month);
 
-    List<TrainerWorkload> getTrainerWorkloads(String username);
+    List<TrainerWorkload> getTrainerWorkloadsOrderedByYearAndMonth(String username);
 
     void save(TrainerWorkload workloadEntry);
 }
