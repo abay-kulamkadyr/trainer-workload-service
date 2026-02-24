@@ -14,6 +14,33 @@ spring:
     password:
     driverClassName: org.h2.Driver
 
+  kafka:
+    consumer:
+      bootstrap-servers: localhost:9092
+      # The ErrorHandlingDeserializer catches "Poison Pills" so your app doesn't crash loop
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring:
+          json:
+            use:
+              type:
+                headers: false
+            trusted:
+              packages: "*"
+            value:
+              default:
+                type: com.epam.workload.interfaces.messaging.event.TrainerWorkloadEvent
+          deserializer:
+            key:
+              delegate:
+                class: org.apache.kafka.common.serialization.StringDeserializer
+            value:
+              delegate:
+                class: org.springframework.kafka.support.serializer.JsonDeserializer
+
+
+
 eureka:
   client:
     serviceUrl:
@@ -33,3 +60,8 @@ security:
 logging:
   pattern:
     console: '%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%15.15t]){faint} %clr([TxnId: %X{transactionId:-NO_TXN}]){cyan} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}'
+
+app:
+  kafka:
+    topics:
+      training-created: gym.trainings.created
