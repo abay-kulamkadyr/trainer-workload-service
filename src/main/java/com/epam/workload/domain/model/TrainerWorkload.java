@@ -2,6 +2,8 @@ package com.epam.workload.domain.model;
 
 import java.time.Month;
 import java.time.Year;
+import java.util.HashMap;
+import java.util.Map;
 
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -14,7 +16,7 @@ import lombok.With;
 @With
 public class TrainerWorkload {
     @EqualsAndHashCode.Include
-    Long id;
+    String id;
 
     @EqualsAndHashCode.Include
     String username;
@@ -25,11 +27,6 @@ public class TrainerWorkload {
 
     Boolean active;
 
-    @EqualsAndHashCode.Include
-    Year year;
-
-    @EqualsAndHashCode.Include
-    Month month;
-
-    Integer trainingDurationMinutes;
+    @Builder.Default
+    Map<Year, Map<Month, Integer>> yearMonthDuration = new HashMap<>();
 }
