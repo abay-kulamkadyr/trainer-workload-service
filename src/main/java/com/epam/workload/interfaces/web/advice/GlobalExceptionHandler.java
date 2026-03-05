@@ -4,9 +4,9 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.epam.workload.application.exception.EntityNotFoundException;
 import com.epam.workload.application.exception.InsufficientDurationException;
 import com.epam.workload.interfaces.web.dto.response.ErrorResponse;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;

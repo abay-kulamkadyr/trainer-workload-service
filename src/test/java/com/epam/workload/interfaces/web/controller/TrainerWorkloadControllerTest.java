@@ -19,13 +19,13 @@ import com.epam.workload.application.dto.request.UpdateTrainerWorkloadCommand;
 import com.epam.workload.application.dto.response.MonthSummaryDTO;
 import com.epam.workload.application.dto.response.TrainerSummaryResponse;
 import com.epam.workload.application.dto.response.YearSummaryDTO;
+import com.epam.workload.application.exception.EntityNotFoundException;
 import com.epam.workload.application.exception.InsufficientDurationException;
 import com.epam.workload.application.service.TrainerWorkloadService;
 import com.epam.workload.domain.model.TrainerWorkload;
 import com.epam.workload.interfaces.web.dto.request.TrainerWorkloadWebRequest;
 import com.epam.workload.interfaces.web.mapper.WorkloadRequestMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,11 +33,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(TrainerWorkloadController.class)
 @DisplayName("TrainerWorkloadController Tests")
+@TestPropertySource(properties = "spring.main.banner-mode=off")
 class TrainerWorkloadControllerTest {
 
     @Autowired

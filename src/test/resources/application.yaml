@@ -52,6 +52,24 @@ security:
 logging:
   pattern:
     console: '%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%15.15t]){faint} %clr([TxnId: %X{transactionId:-NO_TXN}]){cyan} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}'
+  level:
+    root: ERROR
+    org:
+      springframework: ERROR
+    com:
+      epam:
+        workload:
+          infrastructure:
+            logging: OFF
+            bootstrap:
+              DatabaseBootstrapper: OFF
+              JsonDataLoader: OFF
+          interfaces:
+            web:
+              advice:
+                GlobalExceptionHandler: OFF
+  file:
+    name: ""   # disables file logging
 
 app:
   kafka:

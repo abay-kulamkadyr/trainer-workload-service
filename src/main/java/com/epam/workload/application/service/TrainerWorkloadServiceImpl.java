@@ -11,14 +11,13 @@ import com.epam.workload.application.dto.request.UpdateTrainerWorkloadCommand;
 import com.epam.workload.application.dto.response.MonthSummaryDTO;
 import com.epam.workload.application.dto.response.TrainerSummaryResponse;
 import com.epam.workload.application.dto.response.YearSummaryDTO;
+import com.epam.workload.application.exception.EntityNotFoundException;
 import com.epam.workload.application.exception.InsufficientDurationException;
 import com.epam.workload.domain.model.TrainerWorkload;
 import com.epam.workload.domain.port.TrainerWorkloadRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -32,7 +31,6 @@ public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
     }
 
     @Override
-    @Transactional
     public TrainerWorkload processRequest(UpdateTrainerWorkloadCommand request) {
         Year year = Year.of(request.trainingDate().getYear());
         Month month = request.trainingDate().getMonth();
@@ -68,7 +66,6 @@ public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public TrainerSummaryResponse getTrainerSummary(String username) {
         log.debug("Fetching workload summary for trainer: {}", username);
 

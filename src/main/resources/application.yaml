@@ -8,11 +8,10 @@ spring:
     mongodb:
       uri: mongodb://root:secret@localhost:27017/trainer_db?authSource=admin
       auto-index-creation: true
-      min-connections-per-host: 0
-      max-connections-per-host: 100
-      max-wait-time: 120000
 
   kafka:
+    listener:
+      ack-mode: record
     consumer:
       bootstrap-servers: localhost:9092
       # The ErrorHandlingDeserializer catches "Poison Pills" so your app doesn't crash loop

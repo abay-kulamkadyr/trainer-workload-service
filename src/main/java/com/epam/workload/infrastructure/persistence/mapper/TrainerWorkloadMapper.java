@@ -55,7 +55,7 @@ public class TrainerWorkloadMapper {
                 .username(domain.getUsername())
                 .firstName(domain.getFirstName())
                 .lastName(domain.getLastName())
-                .isActive(domain.getActive())
+                .active(domain.getActive())
                 .years(years)
                 .build();
     }

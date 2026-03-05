@@ -32,7 +32,7 @@ public class TrainerWorkloadDAO {
 
     private String lastName;
 
-    private boolean isActive;
+    private boolean active;
 
     @Builder.Default
     private List<YearSummaryDAO> years = new ArrayList<>();
