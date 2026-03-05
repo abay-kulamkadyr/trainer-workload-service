@@ -191,7 +191,8 @@
 						<exclude>com/epam/workload/domain/**/*</exclude>
 						<exclude>com/epam/workload/infrastructure/security/authentication_token</exclude>
 						<exclude>com/epam/workload/infrastructure/logging/**/*</exclude>
-						<exclude>com/epam/workload/infrastructure/persistence/**/*</exclude>
+						<exclude>com/epam/workload/infrastructure/persistence/dao/**/*</exclude>
+						<exclude>com/epam/workload/infrastructure/persistence/repository/**/*</exclude>
 						<exclude>com/epam/workload/interfaces/messaging/**/*</exclude>
 						<exclude>com/epam/workload/interfaces/web/dto/**/*</exclude>
 						<exclude>com/epam/workload/interfaces/web/mapper/**/*</exclude>
