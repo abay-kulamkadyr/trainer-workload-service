@@ -1,0 +1,9 @@
+services:
+  mongodb:
+    image: 'mongo:8.2.5'
+    environment:
+      - 'MONGO_INITDB_DATABASE=trainer_db'
+      - 'MONGO_INITDB_ROOT_PASSWORD=secret'
+      - 'MONGO_INITDB_ROOT_USERNAME=root'
+    ports:
+      - '27017:27017'

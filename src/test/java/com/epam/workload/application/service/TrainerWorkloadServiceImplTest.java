@@ -3,23 +3,25 @@ package com.epam.workload.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.Year;
-import java.util.Arrays;
-import java.util.List;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import com.epam.workload.application.dto.request.ActionType;
 import com.epam.workload.application.dto.request.UpdateTrainerWorkloadCommand;
 import com.epam.workload.application.dto.response.TrainerSummaryResponse;
+import com.epam.workload.application.exception.EntityNotFoundException;
 import com.epam.workload.application.exception.InsufficientDurationException;
 import com.epam.workload.domain.model.TrainerWorkload;
 import com.epam.workload.domain.port.TrainerWorkloadRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("TrainerWorkloadService Tests")
+@DisplayName("TrainerWorkloadServiceImpl Tests")
 class TrainerWorkloadServiceImplTest {
 
     @Mock
@@ -38,232 +40,216 @@ class TrainerWorkloadServiceImplTest {
     @InjectMocks
     private TrainerWorkloadServiceImpl service;
 
-    private UpdateTrainerWorkloadCommand createCommand(ActionType actionType, Integer duration) {
+    private static UpdateTrainerWorkloadCommand command(ActionType actionType, int duration, int year, int month) {
         return new UpdateTrainerWorkloadCommand(
-                "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), duration, actionType);
+                "john.smith", "John", "Smith", true, LocalDateTime.of(year, month, 15, 10, 0), duration, actionType);
+    }
+
+    private static TrainerWorkload workloadWith(Year year, Month month, int duration) {
+        Map<Month, Integer> months = new EnumMap<>(Month.class);
+        months.put(month, duration);
+        Map<Year, Map<Month, Integer>> yearMap = new HashMap<>();
+        yearMap.put(year, months);
+        return TrainerWorkload.builder()
+                .id("1")
+                .username("john.smith")
+                .firstName("John")
+                .lastName("Smith")
+                .active(true)
+                .yearMonthDuration(yearMap)
+                .build();
+    }
+
+    private int getDuration(TrainerWorkload workload, Year year, Month month) {
+        return workload.getYearMonthDuration().get(year).get(month);
     }
 
     @Nested
-    @DisplayName("ADD Operation Tests")
-    class AddOperationTests {
+    @DisplayName("ADD operation")
+    class AddTests {
 
         @Test
-        @DisplayName("Should add duration to existing workload")
-        void shouldAddDurationToExistingWorkload() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.ADD, 60);
+        @DisplayName("Should add duration to existing year and month entry")
+        void shouldAddToExistingEntry() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 100)));
 
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .id(1L)
-                    .username("john.smith")
-                    .firstName("John")
-                    .lastName("Smith")
-                    .active(true)
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(100)
-                    .build();
+            TrainerWorkload result = service.processRequest(command(ActionType.ADD, 60, 2025, 1));
 
-            when(repository.findByUsernameAndYearAndMonth(eq("john.smith"), eq(Year.of(2025)), eq(Month.JANUARY)))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When
-            TrainerWorkload result = service.processRequest(command);
-
-            // Then
-            assertThat(result.getTrainingDurationMinutes()).isEqualTo(160); // 100 + 60
-            verify(repository).save(any(TrainerWorkload.class));
-        }
-
-        @Test
-        @DisplayName("Should create new workload when none exists")
-        void shouldCreateNewWorkloadWhenNoneExists() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.ADD, 60);
-
-            when(repository.findByUsernameAndYearAndMonth(eq("john.smith"), eq(Year.of(2025)), eq(Month.JANUARY)))
-                    .thenReturn(Optional.empty());
-
-            // When
-            TrainerWorkload result = service.processRequest(command);
-
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getUsername()).isEqualTo("john.smith");
-            assertThat(result.getFirstName()).isEqualTo("John");
-            assertThat(result.getLastName()).isEqualTo("Smith");
-            assertThat(result.getActive()).isTrue();
-            assertThat(result.getYear()).isEqualTo(Year.of(2025));
-            assertThat(result.getMonth()).isEqualTo(Month.JANUARY);
-            assertThat(result.getTrainingDurationMinutes()).isEqualTo(60); // 0 + 60
-            verify(repository).save(any(TrainerWorkload.class));
-        }
-
-        @Test
-        @DisplayName("Should handle adding to zero duration")
-        void shouldHandleAddingToZeroDuration() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.ADD, 30);
-
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .username("john.smith")
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(0)
-                    .build();
-
-            when(repository.findByUsernameAndYearAndMonth(any(), any(), any()))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When
-            TrainerWorkload result = service.processRequest(command);
-
-            // Then
-            assertThat(result.getTrainingDurationMinutes()).isEqualTo(30);
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE Operation Tests")
-    class DeleteOperationTests {
-
-        @Test
-        @DisplayName("Should subtract duration from existing workload")
-        void shouldSubtractDurationFromExistingWorkload() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 40);
-
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .id(1L)
-                    .username("john.smith")
-                    .firstName("John")
-                    .lastName("Smith")
-                    .active(true)
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(100)
-                    .build();
-
-            when(repository.findByUsernameAndYearAndMonth(eq("john.smith"), eq(Year.of(2025)), eq(Month.JANUARY)))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When
-            TrainerWorkload result = service.processRequest(command);
-
-            // Then
-            assertThat(result.getTrainingDurationMinutes()).isEqualTo(60); // 100 - 40
-            verify(repository).save(any(TrainerWorkload.class));
-        }
-
-        @Test
-        @DisplayName("Should throw exception when deleting more than available")
-        void shouldThrowExceptionWhenDeletingMoreThanAvailable() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 150);
-
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .username("john.smith")
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(100)
-                    .build();
-
-            when(repository.findByUsernameAndYearAndMonth(any(), any(), any()))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When & Then
-            assertThatThrownBy(() -> service.processRequest(command)).isInstanceOf(InsufficientDurationException.class);
-
-            verify(repository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("Should throw exception when deleting from zero duration")
-        void shouldThrowExceptionWhenDeletingFromZeroDuration() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 10);
-
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .username("john.smith")
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(0)
-                    .build();
-
-            when(repository.findByUsernameAndYearAndMonth(any(), any(), any()))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When & Then
-            assertThatThrownBy(() -> service.processRequest(command)).isInstanceOf(InsufficientDurationException.class);
-
-            verify(repository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("Should allow deleting exact available duration")
-        void shouldAllowDeletingExactAvailableDuration() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 100);
-
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .username("john.smith")
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(100)
-                    .build();
-
-            when(repository.findByUsernameAndYearAndMonth(any(), any(), any()))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When
-            TrainerWorkload result = service.processRequest(command);
-
-            // Then
-            assertThat(result.getTrainingDurationMinutes()).isEqualTo(0);
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(160);
             verify(repository).save(any());
         }
 
         @Test
-        @DisplayName("Should throw exception when deleting from non-existent workload")
-        void shouldThrowExceptionWhenDeletingFromNonExistentWorkload() {
-            // Given
-            UpdateTrainerWorkloadCommand command = createCommand(ActionType.DELETE, 50);
+        @DisplayName("Should create new month entry under existing year")
+        void shouldCreateNewMonthUnderExistingYear() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 100)));
 
-            when(repository.findByUsernameAndYearAndMonth(any(), any(), any())).thenReturn(Optional.empty());
+            TrainerWorkload result = service.processRequest(command(ActionType.ADD, 50, 2025, 2));
 
-            // When & Then
-            assertThatThrownBy(() -> service.processRequest(command)).isInstanceOf(InsufficientDurationException.class);
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(100);
+            assertThat(getDuration(result, Year.of(2025), Month.FEBRUARY)).isEqualTo(50);
+            verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("Should create new year and month entry when year does not exist")
+        void shouldCreateNewYearEntry() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2024), Month.DECEMBER, 100)));
+
+            TrainerWorkload result = service.processRequest(command(ActionType.ADD, 75, 2025, 1));
+
+            assertThat(getDuration(result, Year.of(2024), Month.DECEMBER)).isEqualTo(100);
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(75);
+            verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("Should create brand new trainer document when none exists")
+        void shouldCreateNewDocumentWhenNoneExists() {
+            when(repository.findByUsername("john.smith")).thenReturn(Optional.empty());
+
+            TrainerWorkload result = service.processRequest(command(ActionType.ADD, 60, 2025, 1));
+
+            assertThat(result.getUsername()).isEqualTo("john.smith");
+            assertThat(result.getFirstName()).isEqualTo("John");
+            assertThat(result.getLastName()).isEqualTo("Smith");
+            assertThat(result.getActive()).isTrue();
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(60);
+            verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("Should add to zero duration")
+        void shouldAddToZeroDuration() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 0)));
+
+            TrainerWorkload result = service.processRequest(command(ActionType.ADD, 30, 2025, 1));
+
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("Should accumulate multiple ADD calls on same month")
+        void shouldAccumulateMultipleAdds() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 0)))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 60)));
+
+            service.processRequest(command(ActionType.ADD, 60, 2025, 1));
+            TrainerWorkload result = service.processRequest(command(ActionType.ADD, 40, 2025, 1));
+
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(100);
         }
     }
 
     @Nested
-    @DisplayName("Get Trainer Summary Tests")
+    @DisplayName("DELETE operation")
+    class DeleteTests {
+
+        @Test
+        @DisplayName("Should subtract duration from existing entry")
+        void shouldSubtractFromExistingEntry() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 100)));
+
+            TrainerWorkload result = service.processRequest(command(ActionType.DELETE, 40, 2025, 1));
+
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(60);
+            verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("Should allow deleting exact available duration leaving zero")
+        void shouldAllowDeletingExactDuration() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 100)));
+
+            TrainerWorkload result = service.processRequest(command(ActionType.DELETE, 100, 2025, 1));
+
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(0);
+            verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw InsufficientDurationException when subtracting more than available")
+        void shouldThrowWhenSubtractingMoreThanAvailable() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 100)));
+
+            assertThatThrownBy(() -> service.processRequest(command(ActionType.DELETE, 150, 2025, 1)))
+                    .isInstanceOf(InsufficientDurationException.class)
+                    .hasMessageContaining("150");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw InsufficientDurationException when subtracting from zero")
+        void shouldThrowWhenSubtractingFromZero() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 0)));
+
+            assertThatThrownBy(() -> service.processRequest(command(ActionType.DELETE, 10, 2025, 1)))
+                    .isInstanceOf(InsufficientDurationException.class);
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw EntityNotFoundException when year entry does not exist")
+        void shouldThrowWhenYearNotFound() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2024), Month.JANUARY, 100)));
+
+            assertThatThrownBy(() -> service.processRequest(command(ActionType.DELETE, 50, 2025, 1)))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("2025");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw EntityNotFoundException when month entry does not exist")
+        void shouldThrowWhenMonthNotFound() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.FEBRUARY, 100)));
+
+            assertThatThrownBy(() -> service.processRequest(command(ActionType.DELETE, 50, 2025, 1)))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("JANUARY");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw EntityNotFoundException when no trainer document exists")
+        void shouldThrowWhenNoDocumentExists() {
+            when(repository.findByUsername("john.smith")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.processRequest(command(ActionType.DELETE, 50, 2025, 1)))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            verify(repository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("getTrainerSummary")
     class GetTrainerSummaryTests {
 
         @Test
-        @DisplayName("Should return summary with single year and month")
-        void shouldReturnSummaryWithSingleYearAndMonth() {
-            // Given
-            String username = "john.smith";
+        @DisplayName("Should return summary for trainer with single year and month")
+        void shouldReturnSummaryForSingleYearAndMonth() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 120)));
 
-            TrainerWorkload workload = TrainerWorkload.builder()
-                    .username(username)
-                    .firstName("John")
-                    .lastName("Smith")
-                    .active(true)
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(120)
-                    .build();
+            TrainerSummaryResponse response = service.getTrainerSummary("john.smith");
 
-            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(List.of(workload));
-
-            // When
-            TrainerSummaryResponse response = service.getTrainerSummary(username);
-
-            // Then
-            assertThat(response).isNotNull();
-            assertThat(response.username()).isEqualTo(username);
+            assertThat(response.username()).isEqualTo("john.smith");
             assertThat(response.firstName()).isEqualTo("John");
             assertThat(response.lastName()).isEqualTo("Smith");
             assertThat(response.status()).isTrue();
@@ -277,168 +263,112 @@ class TrainerWorkloadServiceImplTest {
 
         @Test
         @DisplayName("Should return summary with multiple months in same year")
-        void shouldReturnSummaryWithMultipleMonthsInSameYear() {
-            // Given
-            String username = "john.smith";
+        void shouldReturnSummaryWithMultipleMonths() {
+            Map<Month, Integer> months = new EnumMap<>(Month.class);
+            months.put(Month.JANUARY, 120);
+            months.put(Month.FEBRUARY, 90);
+            months.put(Month.MARCH, 150);
+            Map<Year, Map<Month, Integer>> yearMap = new HashMap<>();
+            yearMap.put(Year.of(2025), months);
 
-            List<TrainerWorkload> workloads = Arrays.asList(
-                    TrainerWorkload.builder()
-                            .username(username)
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(TrainerWorkload.builder()
+                            .username("john.smith")
                             .firstName("John")
                             .lastName("Smith")
                             .active(true)
-                            .year(Year.of(2025))
-                            .month(Month.JANUARY)
-                            .trainingDurationMinutes(120)
-                            .build(),
-                    TrainerWorkload.builder()
-                            .username(username)
-                            .firstName("John")
-                            .lastName("Smith")
-                            .active(true)
-                            .year(Year.of(2025))
-                            .month(Month.FEBRUARY)
-                            .trainingDurationMinutes(90)
-                            .build(),
-                    TrainerWorkload.builder()
-                            .username(username)
-                            .firstName("John")
-                            .lastName("Smith")
-                            .active(true)
-                            .year(Year.of(2025))
-                            .month(Month.MARCH)
-                            .trainingDurationMinutes(150)
-                            .build());
+                            .yearMonthDuration(yearMap)
+                            .build()));
 
-            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(workloads);
+            TrainerSummaryResponse response = service.getTrainerSummary("john.smith");
 
-            // When
-            TrainerSummaryResponse response = service.getTrainerSummary(username);
-
-            // Then
             assertThat(response.years()).hasSize(1);
-            assertThat(response.years().getFirst().year()).isEqualTo(Year.of(2025));
             assertThat(response.years().getFirst().months()).hasSize(3);
         }
 
         @Test
         @DisplayName("Should return summary with multiple years")
         void shouldReturnSummaryWithMultipleYears() {
-            // Given
-            String username = "john.smith";
+            Map<Month, Integer> months2024 = new EnumMap<>(Month.class);
+            months2024.put(Month.DECEMBER, 100);
+            Map<Month, Integer> months2025 = new EnumMap<>(Month.class);
+            months2025.put(Month.JANUARY, 120);
+            Map<Year, Map<Month, Integer>> yearMap = new HashMap<>();
+            yearMap.put(Year.of(2024), months2024);
+            yearMap.put(Year.of(2025), months2025);
 
-            List<TrainerWorkload> workloads = Arrays.asList(
-                    TrainerWorkload.builder()
-                            .username(username)
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(TrainerWorkload.builder()
+                            .username("john.smith")
                             .firstName("John")
                             .lastName("Smith")
                             .active(true)
-                            .year(Year.of(2024))
-                            .month(Month.DECEMBER)
-                            .trainingDurationMinutes(100)
-                            .build(),
-                    TrainerWorkload.builder()
-                            .username(username)
-                            .firstName("John")
-                            .lastName("Smith")
-                            .active(true)
-                            .year(Year.of(2025))
-                            .month(Month.JANUARY)
-                            .trainingDurationMinutes(120)
-                            .build());
+                            .yearMonthDuration(yearMap)
+                            .build()));
 
-            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(workloads);
+            TrainerSummaryResponse response = service.getTrainerSummary("john.smith");
 
-            // When
-            TrainerSummaryResponse response = service.getTrainerSummary(username);
-
-            // Then
             assertThat(response.years()).hasSize(2);
         }
 
         @Test
-        @DisplayName("Should throw exception when no workloads found")
-        void shouldThrowExceptionWhenNoWorkloadsFound() {
-            // Given
-            String username = "nonexistent.user";
-            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(List.of());
+        @DisplayName("Should throw EntityNotFoundException when trainer has no document")
+        void shouldThrowWhenTrainerNotFound() {
+            when(repository.findByUsername("ghost")).thenReturn(Optional.empty());
 
-            // When & Then
-            assertThatThrownBy(() -> service.getTrainerSummary(username)).isInstanceOf(EntityNotFoundException.class);
-        }
-
-        @Test
-        @DisplayName("Should throw exception when workloads is null")
-        void shouldThrowExceptionWhenWorkloadsIsNull() {
-            // Given
-            String username = "john.smith";
-            when(repository.getTrainerWorkloadsOrderedByYearAndMonth(username)).thenReturn(null);
-
-            // When & Then
-            assertThatThrownBy(() -> service.getTrainerSummary(username)).isInstanceOf(EntityNotFoundException.class);
+            assertThatThrownBy(() -> service.getTrainerSummary("ghost"))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("ghost");
         }
     }
 
     @Nested
-    @DisplayName("Edge Cases Tests")
-    class EdgeCasesTests {
+    @DisplayName("Edge cases")
+    class EdgeCaseTests {
 
         @Test
-        @DisplayName("Should handle very large duration values")
-        void shouldHandleVeryLargeDurationValues() {
-            // Given
-            UpdateTrainerWorkloadCommand command = new UpdateTrainerWorkloadCommand(
+        @DisplayName("Should not mutate the original workload map on ADD")
+        void shouldNotMutateOriginalOnAdd() {
+            TrainerWorkload original = workloadWith(Year.of(2025), Month.JANUARY, 100);
+            when(repository.findByUsername("john.smith")).thenReturn(Optional.of(original));
+
+            service.processRequest(command(ActionType.ADD, 50, 2025, 1));
+
+            // original map should be untouched
+            assertThat(original.getYearMonthDuration().get(Year.of(2025)).get(Month.JANUARY))
+                    .isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("Should not mutate the original workload map on DELETE")
+        void shouldNotMutateOriginalOnDelete() {
+            TrainerWorkload original = workloadWith(Year.of(2025), Month.JANUARY, 100);
+            when(repository.findByUsername("john.smith")).thenReturn(Optional.of(original));
+
+            service.processRequest(command(ActionType.DELETE, 40, 2025, 1));
+
+            assertThat(original.getYearMonthDuration().get(Year.of(2025)).get(Month.JANUARY))
+                    .isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("Should handle large duration values without overflow")
+        void shouldHandleLargeDurationValues() {
+            when(repository.findByUsername("john.smith"))
+                    .thenReturn(Optional.of(workloadWith(Year.of(2025), Month.JANUARY, 50)));
+
+            UpdateTrainerWorkloadCommand cmd = new UpdateTrainerWorkloadCommand(
                     "john.smith",
                     "John",
                     "Smith",
                     true,
-                    LocalDateTime.of(2025, 1, 15, 14, 30),
+                    LocalDateTime.of(2025, 1, 15, 10, 0),
                     Integer.MAX_VALUE - 100,
                     ActionType.ADD);
 
-            TrainerWorkload existingWorkload = TrainerWorkload.builder()
-                    .username("john.smith")
-                    .year(Year.of(2025))
-                    .month(Month.JANUARY)
-                    .trainingDurationMinutes(50)
-                    .build();
+            TrainerWorkload result = service.processRequest(cmd);
 
-            when(repository.findByUsernameAndYearAndMonth(any(), any(), any()))
-                    .thenReturn(Optional.of(existingWorkload));
-
-            // When
-            TrainerWorkload result = service.processRequest(command);
-
-            // Then
-            assertThat(result.getTrainingDurationMinutes()).isEqualTo(Integer.MAX_VALUE - 50);
-        }
-
-        @Test
-        @DisplayName("Should handle workload for different months")
-        void shouldHandleWorkloadForDifferentMonths() {
-            // Given
-            UpdateTrainerWorkloadCommand januaryCommand = new UpdateTrainerWorkloadCommand(
-                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 1, 15, 14, 30), 100, ActionType.ADD);
-
-            UpdateTrainerWorkloadCommand februaryCommand = new UpdateTrainerWorkloadCommand(
-                    "john.smith", "John", "Smith", true, LocalDateTime.of(2025, 2, 15, 14, 30), 150, ActionType.ADD);
-
-            when(repository.findByUsernameAndYearAndMonth(eq("john.smith"), eq(Year.of(2025)), eq(Month.JANUARY)))
-                    .thenReturn(Optional.empty());
-
-            when(repository.findByUsernameAndYearAndMonth(eq("john.smith"), eq(Year.of(2025)), eq(Month.FEBRUARY)))
-                    .thenReturn(Optional.empty());
-
-            // When
-            TrainerWorkload januaryResult = service.processRequest(januaryCommand);
-            TrainerWorkload februaryResult = service.processRequest(februaryCommand);
-
-            // Then
-            assertThat(januaryResult.getMonth()).isEqualTo(Month.JANUARY);
-            assertThat(januaryResult.getTrainingDurationMinutes()).isEqualTo(100);
-            assertThat(februaryResult.getMonth()).isEqualTo(Month.FEBRUARY);
-            assertThat(februaryResult.getTrainingDurationMinutes()).isEqualTo(150);
-            verify(repository, times(2)).save(any());
+            assertThat(getDuration(result, Year.of(2025), Month.JANUARY)).isEqualTo(Integer.MAX_VALUE - 50);
         }
     }
 }

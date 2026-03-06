@@ -1,25 +1,28 @@
 package com.epam.workload.application.service;
 
+import java.time.Month;
 import java.time.Year;
-import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.epam.workload.application.dto.request.UpdateTrainerWorkloadCommand;
 import com.epam.workload.application.dto.response.MonthSummaryDTO;
 import com.epam.workload.application.dto.response.TrainerSummaryResponse;
 import com.epam.workload.application.dto.response.YearSummaryDTO;
+import com.epam.workload.application.exception.EntityNotFoundException;
 import com.epam.workload.application.exception.InsufficientDurationException;
 import com.epam.workload.domain.model.TrainerWorkload;
 import com.epam.workload.domain.port.TrainerWorkloadRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
 public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
+
     private final TrainerWorkloadRepository repository;
 
     @Autowired
@@ -28,87 +31,93 @@ public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
     }
 
     @Override
-    @Transactional
     public TrainerWorkload processRequest(UpdateTrainerWorkloadCommand request) {
-        log.debug("Processing {} request for trainer: {}", request.actionType(), request.trainerUsername());
+        Year year = Year.of(request.trainingDate().getYear());
+        Month month = request.trainingDate().getMonth();
+
+        log.debug(
+                "Processing {} request for trainer: {} [{}/{}]",
+                request.actionType(),
+                request.trainerUsername(),
+                year,
+                month);
 
         TrainerWorkload workload = repository
-                .findByUsernameAndYearAndMonth(
-                        request.trainerUsername(),
-                        Year.of(request.trainingDate().getYear()),
-                        request.trainingDate().getMonth())
-                .orElseGet(() -> createNewWorkload(request));
+                .findByUsername(request.trainerUsername())
+                .orElseGet(() -> {
+                    log.debug("No existing document for trainer '{}' - creating new record", request.trainerUsername());
+                    return createNewWorkload(request);
+                });
 
-        switch (request.actionType()) {
-            case ADD -> workload = workload.withTrainingDurationMinutes(
-                    workload.getTrainingDurationMinutes() + request.trainingDurationMinutes());
-            case DELETE -> workload = decreaseWorkloadDuration(workload, request.trainingDurationMinutes());
-        }
+        TrainerWorkload updated =
+                switch (request.actionType()) {
+                    case ADD -> addDuration(workload, year, month, request.trainingDurationMinutes());
+                    case DELETE -> subtractDuration(workload, year, month, request.trainingDurationMinutes());
+                };
 
-        repository.save(workload);
-        return workload;
+        repository.save(updated);
+        log.info(
+                "Saved workload for trainer '{}' - action: {}, [{}/{}]",
+                request.trainerUsername(),
+                request.actionType(),
+                year,
+                month);
+        return updated;
     }
 
     @Override
-    @Transactional(readOnly = true)
     public TrainerSummaryResponse getTrainerSummary(String username) {
-        List<TrainerWorkload> workloads = repository.getTrainerWorkloadsOrderedByYearAndMonth(username);
+        log.debug("Fetching workload summary for trainer: {}", username);
 
-        if (workloads == null || workloads.isEmpty()) {
-            throw new EntityNotFoundException("No workload found for trainer: " + username);
-        }
+        TrainerWorkload workload = repository
+                .findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("No workload found for trainer: " + username));
 
-        return mapToResponse(workloads);
+        return mapToResponse(workload);
     }
 
-    /**
-     * Transforms workload data in single-pass. Since data is already ordered by year/month from the database, we avoid
-     * multiple streaming passes
-     */
-    private TrainerSummaryResponse mapToResponse(List<TrainerWorkload> workloads) {
-        TrainerWorkload firstWorkload = workloads.getFirst();
-        List<YearSummaryDTO> yearsSummaries = new ArrayList<>();
+    private TrainerWorkload addDuration(TrainerWorkload workload, Year year, Month month, int minutes) {
+        Map<Year, Map<Month, Integer>> updated = deepCopy(workload.getYearMonthDuration());
+        updated.computeIfAbsent(year, y -> new EnumMap<>(Month.class)).merge(month, minutes, Integer::sum);
 
-        Year currentYear = null;
-        List<MonthSummaryDTO> currentMonths = null;
+        log.debug("Added {} minutes to trainer '{}' [{}/{}]", minutes, workload.getUsername(), year, month);
+        return workload.withYearMonthDuration(updated);
+    }
 
-        for (var workload : workloads) {
-            if (!workload.getYear().equals(currentYear)) {
-                // Save previous years data if it exists
-                if (currentYear != null) {
-                    yearsSummaries.add(new YearSummaryDTO(currentYear, currentMonths));
-                }
-                currentYear = workload.getYear();
-                currentMonths = new ArrayList<>();
-            }
+    private TrainerWorkload subtractDuration(TrainerWorkload workload, Year year, Month month, int minutes) {
+        Map<Year, Map<Month, Integer>> yearMap = workload.getYearMonthDuration();
+        Map<Month, Integer> monthMap = yearMap.get(year);
 
-            currentMonths.add(new MonthSummaryDTO(workload.getMonth(), workload.getTrainingDurationMinutes()));
+        if (monthMap == null || !monthMap.containsKey(month)) {
+            throw new EntityNotFoundException(
+                    String.format("No workload entry for trainer '%s' in %s/%s", workload.getUsername(), month, year));
         }
 
-        // Add the last year
-        if (currentYear != null) {
-            yearsSummaries.add(new YearSummaryDTO(currentYear, currentMonths));
+        int current = monthMap.get(month);
+        if (current - minutes < 0) {
+            throw new InsufficientDurationException(String.format(
+                    "Cannot subtract %d minutes from trainer '%s' in %s/%s - current is %d min",
+                    minutes, workload.getUsername(), month, year, current));
         }
+
+        Map<Year, Map<Month, Integer>> updated = deepCopy(yearMap);
+        updated.get(year).put(month, current - minutes);
+
+        log.debug("Subtracted {} minutes from trainer '{}' [{}/{}]", minutes, workload.getUsername(), year, month);
+        return workload.withYearMonthDuration(updated);
+    }
+
+    private TrainerSummaryResponse mapToResponse(TrainerWorkload workload) {
+        List<YearSummaryDTO> years = workload.getYearMonthDuration().entrySet().stream()
+                .map(ye -> new YearSummaryDTO(
+                        ye.getKey(),
+                        ye.getValue().entrySet().stream()
+                                .map(me -> new MonthSummaryDTO(me.getKey(), me.getValue()))
+                                .toList()))
+                .toList();
 
         return new TrainerSummaryResponse(
-                firstWorkload.getUsername(),
-                firstWorkload.getFirstName(),
-                firstWorkload.getLastName(),
-                firstWorkload.getActive(),
-                yearsSummaries);
-    }
-
-    private TrainerWorkload decreaseWorkloadDuration(TrainerWorkload workload, Integer trainingDurationMinutes) {
-        if (workload.getTrainingDurationMinutes() - trainingDurationMinutes < 0) {
-            throw new InsufficientDurationException(String.format(
-                    "Cannot decrease workload by %d minutes from Trainer %s, year %s, month %s. Current workload duration: %d minutes",
-                    trainingDurationMinutes,
-                    workload.getUsername(),
-                    workload.getYear(),
-                    workload.getMonth(),
-                    workload.getTrainingDurationMinutes()));
-        }
-        return workload.withTrainingDurationMinutes(workload.getTrainingDurationMinutes() - trainingDurationMinutes);
+                workload.getUsername(), workload.getFirstName(), workload.getLastName(), workload.getActive(), years);
     }
 
     private TrainerWorkload createNewWorkload(UpdateTrainerWorkloadCommand request) {
@@ -117,9 +126,12 @@ public class TrainerWorkloadServiceImpl implements TrainerWorkloadService {
                 .firstName(request.trainerFirstname())
                 .lastName(request.trainerLastname())
                 .active(request.isActive())
-                .year(Year.of(request.trainingDate().getYear()))
-                .month(request.trainingDate().getMonth())
-                .trainingDurationMinutes(0)
                 .build();
+    }
+
+    private Map<Year, Map<Month, Integer>> deepCopy(Map<Year, Map<Month, Integer>> original) {
+        Map<Year, Map<Month, Integer>> copy = new HashMap<>();
+        original.forEach((year, months) -> copy.put(year, new EnumMap<>(months)));
+        return copy;
     }
 }

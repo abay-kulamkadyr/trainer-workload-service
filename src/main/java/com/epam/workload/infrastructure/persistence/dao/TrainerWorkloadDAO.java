@@ -1,50 +1,61 @@
 package com.epam.workload.infrastructure.persistence.dao;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(
-        name = "trainer_workload",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"username", "training_year", "training_month"})})
+@Document(collection = "trainer_workloads")
+@CompoundIndex(name = "name_search_idx", def = "{'firstName': 1, 'lastName': 1}")
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor // Required by Spring Data MongoDB
 @Builder
 public class TrainerWorkloadDAO {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private @Nullable String id;
 
-    @Column(nullable = false)
+    @Indexed(unique = true)
     private String username;
 
-    @Column(name = "first_name")
     private String firstName;
 
-    @Column(name = "last_name")
     private String lastName;
 
-    @Column(name = "is_active")
-    private boolean isActive;
+    private boolean active;
 
-    @Column(name = "training_year", nullable = false)
-    private int year;
+    @Builder.Default
+    private List<YearSummaryDAO> years = new ArrayList<>();
 
-    @Column(name = "training_month", nullable = false)
-    private int month;
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class YearSummaryDAO {
+        private int year;
 
-    @Column(name = "duration_min")
-    private Integer durationMin;
+        @Builder.Default
+        private List<MonthSummaryDAO> months = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class MonthSummaryDAO {
+        private int month;
+        private int durationMin;
+    }
 }

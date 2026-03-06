@@ -6,15 +6,11 @@ spring:
     name: trainer-workload-service
   data:
     mongodb:
-      uri: mongodb://root:secret@localhost:27017/trainer_db?authSource=admin
-      auto-index-creation: true
-
+      uri: mongodb://localhost:27017/test_db
+      auto-index-creation: false
   kafka:
-    listener:
-      ack-mode: record
     consumer:
       bootstrap-servers: localhost:9092
-      # The ErrorHandlingDeserializer catches "Poison Pills" so your app doesn't crash loop
       key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
@@ -35,26 +31,45 @@ spring:
             value:
               delegate:
                 class: org.springframework.kafka.support.serializer.JsonDeserializer
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
 
 eureka:
   client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
 
 security:
   jwt:
     secret: 6cphIzZx0mXxVauGgSNM2WvPmy_2EDu7Bl70ZHJppH4
     lifetime: 30m
-
   cors:
     allowed-origins: http://localhost:8080
 
-# Console log pattern (colored + Tracing ID)
 logging:
   pattern:
     console: '%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%15.15t]){faint} %clr([TxnId: %X{transactionId:-NO_TXN}]){cyan} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}'
+  level:
+    root: ERROR
+    org:
+      springframework: ERROR
+    com:
+      epam:
+        workload:
+          infrastructure:
+            logging: OFF
+            bootstrap:
+              DatabaseBootstrapper: OFF
+              JsonDataLoader: OFF
+          interfaces:
+            web:
+              advice:
+                GlobalExceptionHandler: OFF
+  file:
+    name: ""   # disables file logging
 
 app:
   kafka:

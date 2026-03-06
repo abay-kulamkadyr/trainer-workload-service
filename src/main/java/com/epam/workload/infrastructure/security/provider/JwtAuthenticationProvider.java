@@ -21,7 +21,7 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
     private final TokenValidationService tokenValidationService;
 
     @Autowired
-    JwtAuthenticationProvider(TokenValidationService tokenValidationService) {
+    public JwtAuthenticationProvider(TokenValidationService tokenValidationService) {
         this.tokenValidationService = tokenValidationService;
     }
 
