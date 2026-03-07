@@ -6,14 +6,14 @@ spring:
     name: trainer-workload-service
   data:
     mongodb:
-      uri: mongodb://root:secret@localhost:27017/trainer_db?authSource=admin
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://root:secret@localhost:27017/trainer_db?authSource=admin}
       auto-index-creation: true
 
   kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     listener:
       ack-mode: record
     consumer:
-      bootstrap-servers: localhost:9092
       # The ErrorHandlingDeserializer catches "Poison Pills" so your app doesn't crash loop
       key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer

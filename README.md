@@ -1,357 +1,396 @@
 # Trainer Workload Service
 
-A Spring Boot microservice responsible for tracking and aggregating trainer monthly working hours within a gym management system. The service exposes a REST API for updating and querying trainer workload data, secured with JWT authentication and integrated with a Netflix Eureka service registry.
-
----
+A microservice responsible for tracking and aggregating trainer training hours across the gym ecosystem. It receives training events from the Gym CRM via Kafka and exposes a REST API for querying trainer workload summaries.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
+- [Features](#features)
 - [Technology Stack](#technology-stack)
-- [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [API Reference](#api-reference)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Configuration](#configuration)
+    - [Running the Application](#running-the-application)
+- [API Documentation](#api-documentation)
 - [Security](#security)
 - [Database](#database)
-- [Logging and Tracing](#logging-and-tracing)
-
----
+- [Messaging](#messaging)
+- [Logging](#logging)
+- [Development](#development)
+- [Testing](#testing)
+- [License](#license)
 
 ## Overview
 
-The Trainer Workload Service is a stateless microservice designed to:
-
-- Accept workload update commands (add or delete training minutes) for a given trainer, year, and month
-- Aggregate and return a structured summary of a trainer's total training hours grouped by year and month
-- Validate incoming JWT tokens issued by a central authentication service
-- Register with a Eureka service registry for service discovery
-
----
+The Trainer Workload Service maintains a running summary of training hours per trainer, broken down by year and month. It is updated asynchronously via Kafka events published by the Gym CRM whenever a training session is created or deleted, and can also be updated directly via its REST API.
 
 ## Architecture
 
-The service follows a **hexagonal (ports and adapters) architecture**, ensuring a clean separation between business logic and infrastructure concerns.
+The service follows the same **Onion Architecture** conventions as the Gym CRM:
 
 ```
-interfaces/web          - HTTP controllers, request/response DTOs, MapStruct mappers
-application/service     - Business logic and use case orchestration
-domain/model            - Core domain entities
-domain/port             - Repository interfaces (ports)
-infrastructure          - JPA persistence, security, logging (adapters)
+┌─────────────────────────────────────────┐
+│         Interfaces Layer                │
+│  REST Controllers, DTOs,                │
+│  Kafka Listener, Web Mappers            │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│        Application Layer                │
+│   TrainerWorkloadService,               │
+│   Commands, Responses, Exceptions       │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│          Domain Layer                   │
+│   TrainerWorkload (immutable),          │
+│   TrainerWorkloadRepository (port)      │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│      Infrastructure Layer               │
+│ MongoDB persistence, Security,          │
+│ Logging (MDC / Transaction ID)          │
+└─────────────────────────────────────────┘
 ```
 
----
+### Layer Responsibilities
+
+- **Domain Layer**: `TrainerWorkload` value object (Lombok `@Value` + `@With` for immutability) and the `TrainerWorkloadRepository` port
+- **Application Layer**: Business logic for adding/subtracting durations, exception definitions, command/response DTOs
+- **Infrastructure Layer**: MongoDB adapter, JWT validation, `TransactionIdFilter`, request/response logging interceptor
+- **Interfaces Layer**: REST controller, Kafka event listener, MapStruct mapper, web DTOs
+
+## Features
+
+- **Event-driven workload tracking** — consumes `TrainerWorkloadEvent` messages from Kafka and updates trainer summaries automatically
+- **REST API** — exposes endpoints to update workload directly and query summaries by trainer username
+- **Year/month breakdown** — durations are stored and returned per trainer, year, and month
+- **Immutable domain model** — `TrainerWorkload` uses `@Value`/`@With`; all mutations produce a new instance
+- **JWT authentication** — all endpoints require a valid JWT issued by the Gym CRM
+- **Transaction ID propagation** — `X-Transaction-Id` header is forwarded from Kafka events and HTTP requests into MDC for end-to-end log correlation
+- **Global exception handling** — structured `ErrorResponse` with transaction ID for `404 Not Found` and `422 Unprocessable Entity`
 
 ## Technology Stack
 
-| Component          | Technology                          |
-|--------------------|-------------------------------------|
-| Language           | Java 21                             |
-| Framework          | Spring Boot 3.5.x                   |
-| Security           | Spring Security with JWT (JJWT 0.12)|
-| Persistence        | Spring Data JPA / Hibernate         |
-| Database           | H2 (in-memory)                      |
-| Service Discovery  | Netflix Eureka Client               |
-| API Documentation  | SpringDoc OpenAPI / Swagger UI      |
-| Build Tool         | Maven                               |
-| Code Coverage      | JaCoCo                              |
+### Core Framework
+- **Spring Boot 3.x** — Application framework
+- **Java 21** — Programming language
 
----
+### Persistence
+- **Spring Data MongoDB** — Data access layer
+- **MongoDB** — Document store (trainer workloads stored as nested year/month summaries)
 
-## Prerequisites
+### Messaging
+- **Apache Kafka** — Asynchronous event consumption
+- **Spring Kafka** — Kafka listener integration
 
-- Java 21 or later
-- Maven 3.8 or later
-- A running Eureka Server instance (default: `http://localhost:8761/eureka/`)
-- A compatible JWT secret shared with the issuing authentication service
+### Security
+- **Spring Security 6.x** — Security framework
+- **JWT (JSON Web Tokens)** — Stateless authentication (token issued by Gym CRM, validated here)
 
----
+### Service Discovery
+- **Spring Cloud Netflix Eureka Client** — Registers with Eureka so the Gym CRM can discover this service by name
+
+### Documentation
+- **SpringDoc OpenAPI** — Swagger UI
+
+### Build
+- **Maven** — Dependency management and build tool
 
 ## Getting Started
 
-### Clone and Build
+### Prerequisites
 
-```bash
-git clone git@github.com:abay-kulamkadyr/trainer-workload-service.git
-cd trainer-workload-service
-./mvnw clean install
+- Java 21
+- Maven 3.6+
+- MongoDB instance (local Docker or Atlas)
+- Kafka broker (shared with Gym CRM)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:abay-kulamkadyr/trainer-workload-service.git
+   cd trainer-workload-service
+   ```
+
+2. **Build the project**
+   ```bash
+   ./mvnw clean install
+   ```
+
+### Configuration
+
+Key properties (`src/main/resources/application.yaml`):
+
+```yaml
+server:
+  port: 8081
+
+spring:
+  application:
+    name: trainer-workload-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+      auto-index-creation: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.use.type.headers: false
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.epam.workload.interfaces.messaging.event.TrainerWorkloadEvent
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}   # Must match the secret used by Gym CRM
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080}
+
+app:
+  kafka:
+    topics:
+      training-created: gym.trainings.created
 ```
 
-### Run the Application
+**Important**: `security.jwt.secret` must be the same value configured in the Gym CRM — the workload service only validates tokens, it does not issue them.
+
+To disable Eureka for local development without a registry:
+```yaml
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+```
+
+### Running the Application
 
 ```bash
+# Start MongoDB 
+docker compose up -d
+
 ./mvnw spring-boot:run
 ```
 
-The service starts on port `8081` by default.
-
-### Run Tests
+#### Using JAR
 
 ```bash
-./mvnw test
+./mvnw clean package
+java -jar target/trainer-workload-service-*.jar
 ```
 
-### Apply Code Formatting
+The application starts on `http://localhost:8081`.
 
-```bash
-./mvnw spotless:apply
-```
+## API Documentation
 
-### Check Code Formatting
-
-```bash
-./mvnw spotless:check
-```
-
----
-
-## Configuration
-
-All configuration is managed via `src/main/resources/application.yml`.
-
-### Key Properties
-
-| Property                                | Default Value                          | Description                                      |
-|-----------------------------------------|----------------------------------------|--------------------------------------------------|
-| `server.port`                           | `8081`                                 | HTTP port the service listens on                 |
-| `spring.datasource.url`                 | `jdbc:h2:mem:workload_db`              | In-memory H2 database URL                        |
-| `eureka.client.serviceUrl.defaultZone`  | `http://localhost:8761/eureka/`        | Eureka server registration endpoint              |
-| `security.jwt.secret`                   | (required)                             | HMAC-SHA secret key for JWT verification         |
-| `security.jwt.lifetime`                 | `30m`                                  | Token lifetime (informational, not enforced here)|
-| `security.cors.allowed-origins`         | `http://localhost:8080`                | Comma-separated list of allowed CORS origins     |
-
-### Environment-Specific Configuration
-
-For production deployments, override sensitive properties using environment variables or an external configuration server. In particular:
-
-- `security.jwt.secret` should never be hardcoded. Inject it via environment variable or a secrets manager.
-- `spring.datasource.url` should point to a persistent database.
-- `spring.h2.console.enabled` should be set to `false`.
-
----
-
-## API Reference
-
-### Base URL
+### Swagger UI
 
 ```
-http://localhost:8081/api/workload
+http://localhost:8081/swagger-ui/index.html
+```
+
+### OpenAPI Specification
+
+```
+http://localhost:8081/v3/api-docs
 ```
 
 ### Endpoints
 
-#### Update Trainer Workload
+All endpoints require a valid `Authorization: Bearer <token>` header.
 
-```
-POST /api/workload
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/workload` | Add or delete training hours for a trainer |
+| GET | `/api/workload/{username}` | Get workload summary for a trainer |
 
-Adds or removes training minutes for a trainer for a specific month. If no record exists for the given trainer, year, and month, a new one is created automatically.
+#### POST `/api/workload` — Update Workload
 
-**Request Body**
-
+Request body:
 ```json
 {
-  "trainerUsername": "john.doe",
-  "trainerFirstname": "John",
-  "trainerLastname": "Doe",
+  "trainerUsername": "Jane.Smith",
+  "trainerFirstname": "Jane",
+  "trainerLastname": "Smith",
   "isActive": true,
-  "trainingDate": "2025-06-15T10:00:00",
+  "trainingDate": "2025-06-01T09:00:00",
   "trainingDurationMinutes": 60,
   "actionType": "ADD"
 }
 ```
 
-| Field                    | Type      | Required | Description                                |
-|--------------------------|-----------|----------|--------------------------------------------|
-| `trainerUsername`        | String    | Yes      | Unique identifier for the trainer          |
-| `trainerFirstname`       | String    | Yes      | Trainer first name                         |
-| `trainerLastname`        | String    | Yes      | Trainer last name                          |
-| `isActive`               | Boolean   | Yes      | Whether the trainer is currently active    |
-| `trainingDate`           | DateTime  | Yes      | ISO 8601 date-time of the training session |
-| `trainingDurationMinutes`| Integer   | Yes      | Duration in minutes (minimum: 1)           |
-| `actionType`             | Enum      | Yes      | `ADD` or `DELETE`                          |
+`actionType` is `ADD` or `DELETE`. Returns `200` with `{ "username": "Jane.Smith" }` on success, `422` if a DELETE would result in negative duration.
 
-**Response (200 OK)**
+#### GET `/api/workload/{username}` — Get Summary
 
+```bash
+curl http://localhost:8081/api/workload/Jane.Smith \
+  -H "Authorization: Bearer <token>"
+```
+
+Response:
 ```json
 {
-  "username": "john.doe",
-  "year": "2025",
-  "month": "JUNE",
-  "trainingDurationMinutes": 120
-}
-```
-
-**Error Responses**
-
-| Status | Condition                                                         |
-|--------|-------------------------------------------------------------------|
-| `400`  | Request validation failed (missing or invalid fields)            |
-| `401`  | Missing or invalid JWT token                                      |
-| `422`  | DELETE action would reduce total duration below zero             |
-
----
-
-#### Get Trainer Workload Summary
-
-```
-GET /api/workload/{username}
-```
-
-Returns the full workload history for a trainer, grouped by year and month, ordered chronologically.
-
-**Path Parameters**
-
-| Parameter  | Type   | Description                    |
-|------------|--------|--------------------------------|
-| `username` | String | The trainer's unique username  |
-
-**Response (200 OK)**
-
-```json
-{
-  "username": "john.doe",
-  "firstName": "John",
-  "lastName": "Doe",
+  "username": "Jane.Smith",
+  "firstName": "Jane",
+  "lastName": "Smith",
   "status": true,
   "years": [
     {
-      "year": 2024,
-      "months": [
-        { "month": "NOVEMBER", "trainingSummaryDuration": 180 },
-        { "month": "DECEMBER", "trainingSummaryDuration": 240 }
-      ]
-    },
-    {
       "year": 2025,
       "months": [
-        { "month": "JANUARY", "trainingSummaryDuration": 300 }
+        { "month": "JUNE", "trainingSummaryDuration": 120 }
       ]
     }
   ]
 }
 ```
 
-**Error Responses**
-
-| Status | Condition                                       |
-|--------|-------------------------------------------------|
-| `401`  | Missing or invalid JWT token                    |
-| `404`  | No workload records found for the given username|
-
----
-
-### Interactive API Documentation
-
-Swagger UI is available at:
-
-```
-http://localhost:8081/swagger-ui/index.html
-```
-
-OpenAPI specification (JSON):
-
-```
-http://localhost:8081/v3/api-docs
-```
-
----
+Returns `404` if the trainer has no workload record yet.
 
 ## Security
 
-The service uses stateless JWT-based authentication. All endpoints (except Swagger UI and H2 console) require a valid Bearer token.
+### Authentication
 
-### Authentication Flow
+All endpoints are protected by JWT. The token must be issued by the Gym CRM using the shared secret. The workload service validates the token using `JwtAuthenticationFilter` → `JwtAuthenticationProvider` → `JwtTokenValidationAdapter` (JJWT).
 
-1. The client obtains a JWT from an external authentication service.
-2. The token is included in the `Authorization` header of each request.
-3. The `JwtAuthenticationFilter` extracts and delegates the token to `JwtAuthenticationProvider`.
-4. The provider validates the token signature and expiration using the configured HMAC-SHA secret.
-5. On success, the authenticated principal is stored in the Spring Security context for the duration of the request.
+There is no login endpoint — clients authenticate via the Gym CRM and pass the token in the `Authorization: Bearer <token>` header.
 
-### Request Header
+### CORS
 
-```
-Authorization: Bearer <token>
-```
-
-### Permitted Paths (No Authentication Required)
-
-```
-/h2-console/**
-/v3/api-docs/**
-/swagger-ui/**
-```
-
-### CORS Configuration
-
-Allowed origins are configured via `security.cors.allowed-origins`. Multiple origins can be provided as a comma-separated list.
-
----
+Configurable via `security.cors.allowed-origins`. Defaults to `http://localhost:8082`.
 
 ## Database
 
-The service uses an **H2 in-memory database** suitable for development and testing. The schema is initialized automatically on startup via `src/main/resources/schema.sql`.
+### MongoDB Document Structure
 
-### Schema
+Workloads are stored in the `trainer_workloads` collection. Each document represents one trainer:
 
-```sql
-CREATE TABLE trainer_workload (
-    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username       VARCHAR(255) NOT NULL,
-    first_name     VARCHAR(255),
-    last_name      VARCHAR(255),
-    is_active      BOOLEAN,
-    training_year  INT NOT NULL,
-    training_month INT NOT NULL,
-    duration_min   INT DEFAULT 0,
-    CONSTRAINT unique_trainer_month UNIQUE (username, training_year, training_month),
-    CONSTRAINT positive_duration    CHECK (duration_min >= 0)
-);
-
-CREATE INDEX idx_trainer_lookup ON trainer_workload (username, training_year, training_month);
+```json
+{
+  "_id": "...",
+  "username": "Jane.Smith",
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "active": true,
+  "years": [
+    {
+      "year": 2025,
+      "months": [
+        { "month": 6, "durationMin": 120 },
+        { "month": 7, "durationMin": 60 }
+      ]
+    }
+  ]
+}
 ```
 
-### H2 Console
+`username` has a unique index. The compound index `{ firstName: 1, lastName: 1 }` supports name-based lookups.
 
-The H2 web console is available during development at:
+## Messaging
+
+### Kafka Consumer
+
+The service listens on the `gym.trainings.created` topic (configurable via `app.kafka.topics.training-created`) using the application name as the consumer group ID.
+
+#### Event Schema — `TrainerWorkloadEvent`
+
+```json
+{
+  "trainerUsername": "Jane.Smith",
+  "trainerFirstname": "Jane",
+  "trainerLastname": "Smith",
+  "isActive": true,
+  "trainingDate": "2025-06-01T09:00:00",
+  "trainingDurationMinutes": 60,
+  "actionType": "ADD",
+  "transactionId": "TXN-1748700000000-a1b2c3d4"
+}
+```
+
+#### Error Handling
+
+| Scenario | Behaviour |
+|----------|-----------|
+| `InsufficientDurationException` (DELETE below zero) | Logged as error, offset committed — **no retry, no DLQ** |
+| Any other exception | Rethrown — triggers Kafka retry |
+
+The intentional swallowing of `InsufficientDurationException` means a bad DELETE event will never block the consumer, but the duration will remain unchanged. A dead-letter topic or alerting would be needed for production visibility.
+
+## Logging
+
+All logs include a transaction ID:
 
 ```
-http://localhost:8081/h2-console
+INFO [TxnId: TXN-1748700000000-a1b2c3d4] Processing ADD request for trainer: Jane.Smith [2025/JUNE]
 ```
 
-JDBC URL: `jdbc:h2:mem:workload_db`
+Transaction IDs are:
+- Extracted from the `X-Transaction-Id` header on HTTP requests (or a new UUID generated if absent)
+- Extracted from the `transactionId` field of incoming Kafka events
+- Stored in MDC for automatic inclusion in all log lines within the same thread
+
+## Development
+
+### Adding a New Event Type
+
+1. Add the event POJO to `interfaces/messaging/event/`
+2. Add a new `@KafkaListener` method in a listener class under `interfaces/messaging/listener/`
+3. Map the event to an application-layer command and delegate to the relevant service
+
+### Adding a New Query
+
+1. Add the query method to `TrainerWorkloadRepository` (port) and implement it in `TrainerWorkloadRepositoryImpl`
+2. Add the service method to `TrainerWorkloadService` and `TrainerWorkloadServiceImpl`
+3. Expose via a new controller method and update the Swagger interface in `TrainerWorkloadControllerApi`
+
+## Testing
+
+### Running Tests
+
+```bash
+# All tests
+./mvnw test
+
+# Specific test class
+./mvnw test -Dtest=TrainerWorkloadServiceImplIntegrationTest
+
+# With coverage report
+./mvnw test jacoco:report
+```
+
+### Test Strategy
+
+| Layer | Approach |
+|-------|----------|
+| Domain / utilities | Pure JUnit 5 unit tests |
+| Service | Integration tests against real MongoDB via Testcontainers |
+| Kafka listener | Integration tests with real Kafka via Testcontainers |
+| Controllers | `@WebMvcTest` slices with MockMvc |
+
+Integration tests extend `BaseIntegrationTest` which spins up MongoDB and Kafka via Testcontainers and wires them in using `@ServiceConnection`. Each test cleans its own data in `@BeforeEach`.
+
+## License
+
+This project is licensed under the MIT License — see the LICENSE file for details.
 
 ---
 
-## Logging and Tracing
+## Acknowledgments
 
-### Transaction ID Propagation
-
-Every incoming HTTP request is assigned a unique transaction ID in the format `TXN-<UUID>`. If the client provides an `X-Transaction-Id` header, that value is used instead. The transaction ID is:
-
-- Added to the SLF4J MDC for inclusion in all log messages within the request thread
-- Returned in the `X-Transaction-Id` response header
-- Included in structured error response bodies
-
-### Log Pattern
-
-```
-yyyy-MM-dd HH:mm:ss.SSS  LEVEL  [thread]  [TxnId: <id>]  logger  : message
-```
-
-### Log Levels
-
-| Logger Area              | Level  | Content                                         |
-|--------------------------|--------|-------------------------------------------------|
-| Incoming requests        | INFO   | Method, URI, query string, remote address       |
-| Completed requests       | INFO   | Method, URI, HTTP status                        |
-| Failed requests          | ERROR  | Method, URI, HTTP status, exception message     |
-| Request headers          | DEBUG  | All request headers                             |
-| JWT validation           | DEBUG  | Token validation outcome and username           |
-| Business operations      | DEBUG  | Action type and trainer username                |
-
----
+- Thanks to [@ValeriyNechayev](https://github.com/ValeriyNechayev) at EPAM Systems for mentorship and architectural/code review guidance.

@@ -6,11 +6,9 @@ spring:
     name: trainer-workload-service
   data:
     mongodb:
-      uri: mongodb://localhost:27017/test_db
       auto-index-creation: false
   kafka:
     consumer:
-      bootstrap-servers: localhost:9092
       key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
@@ -31,11 +29,8 @@ spring:
             value:
               delegate:
                 class: org.springframework.kafka.support.serializer.JsonDeserializer
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
 
+# Disable Eureka for tests
 eureka:
   client:
     enabled: false
@@ -47,7 +42,7 @@ security:
     secret: 6cphIzZx0mXxVauGgSNM2WvPmy_2EDu7Bl70ZHJppH4
     lifetime: 30m
   cors:
-    allowed-origins: http://localhost:8080
+    allowed-origins: http://localhost:8082
 
 logging:
   pattern:
