@@ -45,7 +45,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new RestAuthenticationEntryPoint()))
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/h2-console/**")
                         .permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**")
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/actuator/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
