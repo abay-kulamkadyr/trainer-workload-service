@@ -6,15 +6,17 @@ import com.epam.workload.domain.model.TrainerWorkload;
 import com.epam.workload.domain.port.TrainerWorkloadRepository;
 import com.epam.workload.infrastructure.persistence.mapper.TrainerWorkloadMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class TrainerWorkloadRepositoryImpl implements TrainerWorkloadRepository {
+@Profile("!no-integrations")
+public class TrainerWorkloadRepositoryMongoImpl implements TrainerWorkloadRepository {
     private final TrainerWorkloadMongoRepository mongoRepository;
     private final TrainerWorkloadMapper mapper;
 
     @Autowired
-    TrainerWorkloadRepositoryImpl(TrainerWorkloadMongoRepository mongoRepository, TrainerWorkloadMapper mapper) {
+    TrainerWorkloadRepositoryMongoImpl(TrainerWorkloadMongoRepository mongoRepository, TrainerWorkloadMapper mapper) {
         this.mongoRepository = mongoRepository;
         this.mapper = mapper;
     }
